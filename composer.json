@@ -1,0 +1,22 @@
+{
+    "name": "verseles/possession",
+    "description": "Laravel user impersonation package with Sanctum compatibility",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Verseles\\Possession\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.0",
+        "laravel/framework": "^9.0|^10.0|^11.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Verseles\\Possession\\PossessionServiceProvider"
+            ]
+        }
+    }
+}
