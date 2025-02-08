@@ -39,7 +39,7 @@ class User extends Authenticatable
 {
     use ImpersonatesUsers;
     
-    // Add your impersonation logic
+    // Add your possession logic
     public function canPossess()
     {
         return $this->is_admin; // Your admin check logic
@@ -75,7 +75,7 @@ if(auth()->user()->isPossessed()) {
 
 ### Stop possessing
 
-The packagage automatically adds a floating button when possessing a user.
+The package automatically adds a floating button when possessing a user.
 ```blade
 @include('possession::impersonating')
 ```
