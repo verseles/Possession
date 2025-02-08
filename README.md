@@ -52,6 +52,13 @@ class User extends Authenticatable
 }
 ```
 
+4. After possession, you can check if a user is possessed:
+```php
+if(auth()->user()->isPossessed()) {
+    // Do something
+}
+```
+
 ## Usage
 
 ### Possess a user
