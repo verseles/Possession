@@ -2,17 +2,17 @@
 
 namespace Verseles\Possession;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Verseles\Possession\Exceptions\ImpersonationException;
 
 class PossessionManager
 {
-  public function possess($user): void
+  public function possess ( $user ): void
   {
 	 $admin = Auth::guard(config('possession.admin_guard'))->user();
-	 $user = $this->resolveUser($user);
+	 $user  = $this->resolveUser($user);
 
 	 $this->validateImpersonation($admin, $user);
 
@@ -22,7 +22,7 @@ class PossessionManager
 	 Session::put(config('possession.session_keys.original_user'), $admin->id);
   }
 
-  public function unpossess(): void
+  public function unpossess (): void
   {
 	 $originalUserId = Session::get(config('possession.session_keys.original_user'));
 
@@ -42,18 +42,16 @@ class PossessionManager
 	 Session::forget(config('possession.session_keys.original_user'));
   }
 
-  protected function resolveUser($user): Authenticatable
+  protected function resolveUser ( $user ): Authenticatable
   {
 	 if ($user instanceof Authenticatable) return $user;
 
 	 $model = config('possession.user_model');
 
-	 return $model::findOrFail(
-		  is_numeric($user) ? $user : $model::where('email', $user)->firstOrFail()
-	 );
+	 return $model::findOrFail($user);
   }
 
-  protected function validateImpersonation($admin, $user): void
+  protected function validateImpersonation ( $admin, $user ): void
   {
 	 if (!$admin->canPossess()) {
 		throw ImpersonationException::unauthorizedPossess();
@@ -68,7 +66,7 @@ class PossessionManager
 	 }
   }
 
-  protected function logoutAndDestroySession(): void
+  protected function logoutAndDestroySession (): void
   {
 	 Auth::logout();
 	 Session::invalidate();
