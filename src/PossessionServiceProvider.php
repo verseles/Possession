@@ -13,11 +13,13 @@ class PossessionServiceProvider extends ServiceProvider
 
     public function boot()
     {
-        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'possession');
 
         $this->publishes([
             __DIR__.'/../config/possession.php' => config_path('possession.php'),
         ], 'possession-config');
+
+        // Load the helper file
+        require_once __DIR__ . '/helpers.php';
     }
 }
