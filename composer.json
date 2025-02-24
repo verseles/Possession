@@ -6,10 +6,7 @@
   "autoload": {
     "psr-4": {
       "Verseles\\Possession\\": "src/"
-    },
-    "files": [
-      "src/helpers.php"
-    ]
+    }
   },
   "require": {
     "php": "^8.0",

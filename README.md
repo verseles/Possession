@@ -1,14 +1,14 @@
 # Laravel Possession - User Impersonation Package
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/verseles/possession.svg?style=flat-square)](https://packagist.org/packages/verseles/possession)
-[![Total Downloads](https://img.shields.io/packagist/dt/verseles/possession.svg?style=flat-square)](https://packagist.org/packages/verseles/possession)
+[![Latest Version](https://img.shields.io/packagist/v/verseles/possession.svg?style=flat-square)](https://packagist.org/packages/verseles/possession)
 
 A simple user impersonation package for Laravel with Sanctum compatibility.
-Provides a simple way to allow administrators to "possess" (impersonate) other users in your Laravel application.  It's useful for debugging, support, and testing.
 
 ## Features
 
 - Secure user impersonation system
+- Global `possess()` and `unpossess()` methods
+- Comprehensive exception handling
 - Session-based impersonation
 - Sanctum compatibility
 - Simple administration controls
@@ -20,166 +20,156 @@ Provides a simple way to allow administrators to "possess" (impersonate) other u
 - This package is still in development, so use it with caution.
 - It wasn't tested with all Laravel versions, only with Laravel 11.
 
-
-
 ## Installation
 
-You can install the package via Composer:
-
+1. Install via Composer:
 ```bash
 composer require verseles/possession
 ```
 
-After installation, publish the configuration file:
-
+2. Publish the configuration file (optional):
 ```bash
-php artisan vendor:publish --provider="Verseles\Possession\PossessionServiceProvider" --tag="possession-config"
+php artisan vendor:publish --tag=possession-config
 ```
 
-This will create a `config/possession.php` file where you can customize the package's behavior.
-
-## Configuration
-
-The `config/possession.php` file contains the following options:
-
+3. Add the trait to your User model:
 ```php
-<?php
-
-return [
-    'user_model' => App\Models\User::class, // The User model class
-
-    'session_keys' => [
-        'original_user' => 'original_user_id', // Session key to store the original admin's ID
-    ],
-];
-```
-
-*   **`user_model`:**  Specify the fully qualified class name of your User model.  This is usually `App\Models\User` but can be customized.
-*   **`session_keys.original_user`:**  This is the key used to store the original administrator's ID in the session. You generally don't need to change this.
-
-## Usage
-
-### 1. Add the Trait
-
-Add the `ImpersonatesUsers` trait to your `User` model:
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Verseles\Possession\Traits\ImpersonatesUsers;
 
 class User extends Authenticatable
 {
     use ImpersonatesUsers;
-
-    // ... your existing User model code ...
-
-    /**
-     * Determine if the user can possess other users.
-     *
-     * @return bool
-     */
-    public function canPossess(): bool
+    
+    // Add your possession logic
+    public function canPossess()
     {
-        // Implement your logic here (e.g., check for an 'admin' role)
-        return $this->is_admin; // Example:  Only users with 'is_admin' set to true can possess.
+        return $this->is_admin; // Your admin check logic
     }
-
-    /**
-     * Determine if the user can be possessed by other users.
-     *
-     * @return bool
-     */
-    public function canBePossessed(): bool
+    
+    public function canBePossessed()
     {
-        // Implement your logic here (e.g., prevent admins from being possessed)
-        return !$this->is_admin; // Example: Admins cannot be possessed.
+        return !$this->is_admin; // Example restriction
     }
 }
 ```
 
-**Important:**  You *must* implement the `canPossess()` and `canBePossessed()` methods in your `User` model.  These methods control who can possess others and who can be possessed, respectively.  The examples above are basic; adapt them to your specific authorization rules.  The `isPossessed()` method is already implemented in the Trait.
+## Usage
 
-### 2. Use the Global Helper Functions
+### Global Methods
 
-The package provides two global helper functions: `possess()` and `unpossess()`.
-
-#### `possess($user)`
-
-This function allows an administrator to possess another user.  It accepts the following as the `$user` argument:
-
-*   **User ID (integer):**  `possess(123);`
-*   **User Email (string):** `possess('user@example.com');`
-*   **User Model Instance:** `possess($user);`
+Use the facade for direct impersonation control:
 
 ```php
-// Example in a controller:
+use Verseles\Possession\Facades\Possession;
 
-public function possessUser(Request $request, $userId)
-{
-    try {
-        possess($userId);
-        return redirect()->route('dashboard'); // Redirect after successful possession
-    } catch (\Exception $e) {
-        return back()->withErrors(['possession' => $e.getMessage()]); // Handle errors
-    }
+// Possess a user (accepts ID, email, or User model instance)
+try {
+    Possession::possess($targetUser);
+} catch (\Verseles\Possession\Exceptions\ImpersonationException $e) {
+    // Handle exception
+    return redirect()->back()->withErrors(['impersonation' => $e->getMessage()]);
+}
+
+// Stop possessing
+try {
+    Possession::unpossess();
+} catch (\Verseles\Possession\Exceptions\ImpersonationException $e) {
+    // Handle exception
+    return redirect()->back()->withErrors(['impersonation' => $e->getMessage()]);
 }
 ```
 
-#### `unpossess()`
-
-This function returns the administrator to their original account. It takes no arguments.
+### Web Routes Example
 
 ```php
-// Example in a controller:
+// routes/web.php
+use Verseles\Possession\Facades\Possession;
 
-public function unpossessUser()
-{
-    try {
-        unpossess();
-        return redirect()->route('admin.dashboard'); // Redirect back to the admin dashboard
-    } catch (\Exception $e) {
-        return back()->withErrors(['possession' => $e.getMessage()]);
+Route::middleware(['web', 'auth:'.config('possession.admin_guard')])->group(function () {
+    Route::post('/possession/impersonate/{user}', function ($user) {
+        try {
+            Possession::possess($user);
+            return redirect()->route('dashboard');
+        } catch (\Verseles\Possession\Exceptions\ImpersonationException $e) {
+            return back()->withErrors(['impersonation' => $e->getMessage()]);
+        }
+    });
+    
+    Route::post('/possession/leave', function () {
+        try {
+            Possession::unpossess();
+            return redirect()->route('admin.dashboard');
+        } catch (\Verseles\Possession\Exceptions\ImpersonationException $e) {
+            return back()->withErrors(['impersonation' => $e->getMessage()]);
+        }
+    });
+});
+```
+
+### Blade Templates
+
+**Start Impersonation:**
+```blade
+@if(auth()->check() && auth()->user()->canImpersonate())
+<form action="{{ route('possession.impersonate', $user->id) }}" method="POST">
+    @csrf
+    <button type="submit">Impersonate User</button>
+</form>
+@endif
+```
+
+**Stop Impersonation:**
+```blade
+@include('possession::impersonating')
+```
+
+## Error Handling
+
+The package throws specific exceptions you can catch:
+
+```php
+use Verseles\Possession\Exceptions\ImpersonationException;
+
+try {
+    Possession::possess($user);
+} catch (ImpersonationException $e) {
+    // Handle specific error types:
+    if ($e->getCode() === 403) {
+        // Authorization error
     }
+    
+    // General error handling
+    return back()->withErrors(['impersonation' => $e->getMessage()]);
 }
 ```
 
-### Error Handling
+Available exceptions:
+- `UnauthorizedPossessException`
+- `UnauthorizedUnpossessException`
+- `TargetCannotBePossessedException`
+- `SelfPossessionException`
+- `NoImpersonationActiveException`
 
-The `possess()` and `unpossess()` functions throw exceptions if:
+## Configuration
 
-*   The current user cannot possess the target user.
-*   The target user cannot be possessed.
-*   The current user and target user are the same.
-*   There's no original user to return to (when calling `unpossess()`).
-*   The original user cannot be found.
-*   The original user (retrieved in `unpossess()`) cannot possess.
+Edit `config/possession.php` after publishing:
 
-You should use `try-catch` blocks to handle these exceptions gracefully in your application.
-
-### Example Workflow
-
-1.  An administrator clicks a "Possess User" button in an admin panel.
-2.  The button sends a request to a route that calls the `possess()` function with the target user's ID.
-3.  If successful, the administrator is now logged in as the target user.
-4.  The administrator performs actions on behalf of the user.
-5.  The administrator clicks an "Unpossess" button.
-6.  The button sends a request to a route that calls the `unpossess()` function.
-7.  The administrator is returned to their original account.
-
-## Important Notes
-
-*   **Security:** Ensure that your `canPossess()` and `canBePossessed()` methods are properly implemented to prevent unauthorized access.  Only trusted users should be allowed to possess others.
-*   **Session:** The package uses the session to store the original administrator's ID.  This is essential for returning to the correct account.
-*   **Error Handling:** Always wrap calls to `possess()` and `unpossess()` in `try-catch` blocks to handle potential errors.
-* **composer dump-autoload:** Remember execute `composer dump-autoload`.
-
-This README provides a complete guide to installing, configuring, and using the Laravel Possession package. Remember to adapt the examples to your specific application's needs.
+```php
+return [
+    'user_model' => App\Models\User::class,
+    'admin_guard' => 'web',
+    'session_keys' => [
+        'original_user' => 'possession.original_user_id',
+    ],
+];
 ```
 
+## Security Considerations
+
+- Always protect impersonation routes with middleware
+- Use separate guards for admin and regular users
+- Regularly review your `canPossess()` and `canBePossessed()` logic
+- Never expose impersonation controls to non-administrative users
 
 ## License
 
