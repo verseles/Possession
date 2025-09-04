@@ -15,10 +15,7 @@ A simple user impersonation package for Laravel with Sanctum compatibility.
 - Visual impersonation indicator
 - Easy to integrate
 
-## Warning
-
-- This package is still in development, so use it with caution.
-- It wasn't tested with all Laravel versions, only with Laravel 11.
+> It wasn't tested with all Laravel versions, only with Laravel 11 and 12.
 
 ## Installation
 
