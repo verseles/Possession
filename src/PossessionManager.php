@@ -5,6 +5,8 @@ namespace Verseles\Possession;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Verseles\Possession\Events\PossessionEnded;
+use Verseles\Possession\Events\PossessionStarted;
 use Verseles\Possession\Exceptions\ImpersonationException;
 
 class PossessionManager
@@ -20,6 +22,24 @@ class PossessionManager
 
 	 Auth::login($user);
 	 Session::put(config('possession.session_keys.original_user'), $admin->id);
+
+	 event(new PossessionStarted($admin, $user));
+  }
+
+  public function isPossessing (): bool
+  {
+	 return Session::has(config('possession.session_keys.original_user'));
+  }
+
+  public function getOriginalUser (): ?Authenticatable
+  {
+	 $originalUserId = Session::get(config('possession.session_keys.original_user'));
+
+	 if (!$originalUserId) {
+		return null;
+	 }
+
+	 return $this->resolveUser($originalUserId);
   }
 
   public function unpossess (): void
@@ -30,7 +50,8 @@ class PossessionManager
 		throw ImpersonationException::noImpersonationActive();
 	 }
 
-	 $admin = $this->resolveUser($originalUserId);
+	 $target = Auth::user();
+	 $admin  = $this->resolveUser($originalUserId);
 
 	 if (!$admin->canPossess()) {
 		throw ImpersonationException::unauthorizedUnpossess();
@@ -40,6 +61,8 @@ class PossessionManager
 
 	 Auth::login($admin);
 	 Session::forget(config('possession.session_keys.original_user'));
+
+	 event(new PossessionEnded($admin, $target));
   }
 
   protected function resolveUser ( $user ): Authenticatable
@@ -47,6 +70,14 @@ class PossessionManager
 	 if ($user instanceof Authenticatable) return $user;
 
 	 $model = config('possession.user_model');
+
+	 if (is_numeric($user)) {
+		return $model::findOrFail($user);
+	 }
+
+	 if (is_string($user) && filter_var($user, FILTER_VALIDATE_EMAIL)) {
+		return $model::where('email', $user)->firstOrFail();
+	 }
 
 	 return $model::findOrFail($user);
   }

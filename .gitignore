@@ -24,6 +24,9 @@ Homestead.yaml
 Homestead.json
 /.vagrant
 .phpunit.result.cache
+.phpunit.cache/
+coverage/
+composer.lock
 
 /public/build
 /storage/pail

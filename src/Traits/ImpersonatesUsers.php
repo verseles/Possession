@@ -18,4 +18,12 @@ trait ImpersonatesUsers
     {
         return session()->has(config('possession.session_keys.original_user'));
     }
+
+    /**
+     * Alias for isPossessed() - checks if the current session is impersonating this user.
+     */
+    public function isImpersonating(): bool
+    {
+        return $this->isPossessed();
+    }
 }

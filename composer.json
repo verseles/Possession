@@ -1,22 +1,51 @@
 {
   "name": "verseles/possession",
   "description": "Laravel user impersonation package with Sanctum compatibility",
+  "keywords": ["laravel", "impersonation", "user", "admin", "sanctum", "auth"],
   "type": "library",
   "license": "MIT",
+  "authors": [
+    {
+      "name": "Verseles",
+      "homepage": "https://github.com/verseles"
+    }
+  ],
+  "homepage": "https://github.com/verseles/possession",
   "autoload": {
     "psr-4": {
       "Verseles\\Possession\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Verseles\\Possession\\Tests\\": "tests/"
     }
   },
   "require": {
     "php": "^8.2",
     "laravel/framework": "^9.0|^10.0|^11.0|^12.0"
   },
+  "require-dev": {
+    "orchestra/testbench": "^8.0|^9.0|^10.0",
+    "phpunit/phpunit": "^10.0|^11.0"
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit",
+    "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+  },
   "extra": {
     "laravel": {
       "providers": [
         "Verseles\\Possession\\PossessionServiceProvider"
-      ]
+      ],
+      "aliases": {
+        "Possession": "Verseles\\Possession\\Facades\\Possession"
+      }
     }
-  }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
