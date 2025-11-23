@@ -8,8 +8,6 @@ if (!function_exists('possess')) {
      *
      * @param  mixed  $user  The user's ID, email, or model instance.
      *
-     * @return void
-     *
      * @throws \Verseles\Possession\Exceptions\ImpersonationException
      */
     function possess($user): void
@@ -22,7 +20,6 @@ if (!function_exists('unpossess')) {
     /**
      * Stop possessing the current user and return to the original admin user.
      *
-     * @return void
      *
      * @throws \Verseles\Possession\Exceptions\ImpersonationException
      */
@@ -35,8 +32,6 @@ if (!function_exists('unpossess')) {
 if (!function_exists('isPossessing')) {
     /**
      * Check if currently possessing another user.
-     *
-     * @return bool
      */
     function isPossessing(): bool
     {

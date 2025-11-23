@@ -8,7 +8,8 @@ use Illuminate\Queue\SerializesModels;
 
 class PossessionStarted
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable;
+    use SerializesModels;
 
     public function __construct(
         public Authenticatable $admin,

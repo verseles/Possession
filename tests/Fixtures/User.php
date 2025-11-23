@@ -12,17 +12,20 @@ class User extends Authenticatable
     protected $guarded = [];
 
     protected bool $canPossessOverride = false;
+
     protected bool $canBePossessedOverride = true;
 
     public function setCanPossess(bool $value): self
     {
         $this->canPossessOverride = $value;
+
         return $this;
     }
 
     public function setCanBePossessed(bool $value): self
     {
         $this->canBePossessedOverride = $value;
+
         return $this;
     }
 

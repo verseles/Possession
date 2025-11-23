@@ -14,25 +14,20 @@ use Verseles\Possession\Tests\TestCase;
 class PossessionManagerTest extends TestCase
 {
     protected User $admin;
+
     protected User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->admin = User::create([
-            'name' => 'Admin',
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        $this->admin->setCanPossess(true);
-
-        $this->user = User::create([
-            'name' => 'User',
-            'email' => 'user@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $this->admin = $this->createAdmin();
+        $this->user = $this->createUser();
     }
+
+    // ===================
+    // Basic Possession Tests
+    // ===================
 
     public function test_admin_can_possess_user(): void
     {
@@ -73,12 +68,15 @@ class PossessionManagerTest extends TestCase
         $this->assertFalse(Possession::isPossessing());
     }
 
+    // ===================
+    // Authorization Tests
+    // ===================
+
     public function test_non_admin_cannot_possess(): void
     {
-        $regularUser = User::create([
+        $regularUser = $this->createUser([
             'name' => 'Regular',
             'email' => 'regular@example.com',
-            'password' => bcrypt('password'),
         ]);
         $regularUser->setCanPossess(false);
 
@@ -114,6 +112,23 @@ class PossessionManagerTest extends TestCase
         Possession::unpossess();
     }
 
+    public function test_cannot_unpossess_when_original_user_lost_permission(): void
+    {
+        Auth::login($this->admin);
+        Possession::possess($this->user);
+
+        // Simulate admin losing possession rights
+        $this->admin->setCanPossess(false);
+        $this->admin->save();
+
+        $this->expectException(ImpersonationException::class);
+        Possession::unpossess();
+    }
+
+    // ===================
+    // State Management Tests
+    // ===================
+
     public function test_get_original_user_returns_admin(): void
     {
         Auth::login($this->admin);
@@ -130,6 +145,25 @@ class PossessionManagerTest extends TestCase
 
         $this->assertNull(Possession::getOriginalUser());
     }
+
+    public function test_is_possessing_returns_false_initially(): void
+    {
+        Auth::login($this->admin);
+
+        $this->assertFalse(Possession::isPossessing());
+    }
+
+    public function test_is_possessing_returns_true_during_possession(): void
+    {
+        Auth::login($this->admin);
+        Possession::possess($this->user);
+
+        $this->assertTrue(Possession::isPossessing());
+    }
+
+    // ===================
+    // Event Tests
+    // ===================
 
     public function test_possession_started_event_is_dispatched(): void
     {
@@ -158,6 +192,32 @@ class PossessionManagerTest extends TestCase
         });
     }
 
+    public function test_events_contain_correct_user_instances(): void
+    {
+        $dispatchedEvents = [];
+
+        Event::listen(PossessionStarted::class, function ($event) use (&$dispatchedEvents) {
+            $dispatchedEvents['started'] = $event;
+        });
+
+        Event::listen(PossessionEnded::class, function ($event) use (&$dispatchedEvents) {
+            $dispatchedEvents['ended'] = $event;
+        });
+
+        Auth::login($this->admin);
+        Possession::possess($this->user);
+        Possession::unpossess();
+
+        $this->assertInstanceOf(User::class, $dispatchedEvents['started']->admin);
+        $this->assertInstanceOf(User::class, $dispatchedEvents['started']->target);
+        $this->assertInstanceOf(User::class, $dispatchedEvents['ended']->admin);
+        $this->assertInstanceOf(User::class, $dispatchedEvents['ended']->target);
+    }
+
+    // ===================
+    // Trait Tests
+    // ===================
+
     public function test_is_impersonating_alias_works(): void
     {
         Auth::login($this->admin);
@@ -165,5 +225,80 @@ class PossessionManagerTest extends TestCase
 
         $this->assertTrue(Auth::user()->isImpersonating());
         $this->assertTrue(Auth::user()->isPossessed());
+    }
+
+    public function test_can_possess_returns_false_by_default(): void
+    {
+        $user = new User;
+
+        $this->assertFalse($user->canPossess());
+    }
+
+    public function test_can_be_possessed_returns_true_by_default(): void
+    {
+        $user = new User;
+
+        $this->assertTrue($user->canBePossessed());
+    }
+
+    // ===================
+    // Session Tests
+    // ===================
+
+    public function test_session_is_regenerated_on_possess(): void
+    {
+        Auth::login($this->admin);
+        $originalSessionId = session()->getId();
+
+        Possession::possess($this->user);
+
+        $this->assertNotEquals($originalSessionId, session()->getId());
+    }
+
+    public function test_session_is_regenerated_on_unpossess(): void
+    {
+        Auth::login($this->admin);
+        Possession::possess($this->user);
+        $possessedSessionId = session()->getId();
+
+        Possession::unpossess();
+
+        $this->assertNotEquals($possessedSessionId, session()->getId());
+    }
+
+    // ===================
+    // Edge Cases
+    // ===================
+
+    public function test_can_possess_multiple_users_sequentially(): void
+    {
+        $secondUser = $this->createUser([
+            'name' => 'Second User',
+            'email' => 'second@example.com',
+        ]);
+
+        Auth::login($this->admin);
+        Possession::possess($this->user);
+        Possession::unpossess();
+        Possession::possess($secondUser);
+
+        $this->assertEquals($secondUser->id, Auth::id());
+        $this->assertTrue(Possession::isPossessing());
+    }
+
+    public function test_user_not_found_by_id_throws_exception(): void
+    {
+        Auth::login($this->admin);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        Possession::possess(99999);
+    }
+
+    public function test_user_not_found_by_email_throws_exception(): void
+    {
+        Auth::login($this->admin);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        Possession::possess('nonexistent@example.com');
     }
 }

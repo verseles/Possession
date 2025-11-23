@@ -11,97 +11,113 @@ use Verseles\Possession\Exceptions\ImpersonationException;
 
 class PossessionManager
 {
-  public function possess ( $user ): void
-  {
-	 $admin = Auth::guard(config('possession.admin_guard'))->user();
-	 $user  = $this->resolveUser($user);
+    public function possess(Authenticatable|int|string $user): void
+    {
+        $admin = Auth::guard(config('possession.admin_guard'))->user();
 
-	 $this->validateImpersonation($admin, $user);
+        if (!$admin) {
+            throw ImpersonationException::unauthorizedPossess();
+        }
 
-	 $this->logoutAndDestroySession();
+        $target = $this->resolveUser($user);
 
-	 Auth::login($user);
-	 Session::put(config('possession.session_keys.original_user'), $admin->id);
+        $this->validateImpersonation($admin, $target);
 
-	 event(new PossessionStarted($admin, $user));
-  }
+        $this->logoutAndDestroySession();
 
-  public function isPossessing (): bool
-  {
-	 return Session::has(config('possession.session_keys.original_user'));
-  }
+        Auth::login($target);
+        Session::put(config('possession.session_keys.original_user'), $admin->id);
 
-  public function getOriginalUser (): ?Authenticatable
-  {
-	 $originalUserId = Session::get(config('possession.session_keys.original_user'));
+        event(new PossessionStarted($admin, $target));
+    }
 
-	 if (!$originalUserId) {
-		return null;
-	 }
+    public function isPossessing(): bool
+    {
+        return Session::has(config('possession.session_keys.original_user'));
+    }
 
-	 return $this->resolveUser($originalUserId);
-  }
+    public function getOriginalUser(): ?Authenticatable
+    {
+        $originalUserId = Session::get(config('possession.session_keys.original_user'));
 
-  public function unpossess (): void
-  {
-	 $originalUserId = Session::get(config('possession.session_keys.original_user'));
+        if (!$originalUserId) {
+            return null;
+        }
 
-	 if (!$originalUserId) {
-		throw ImpersonationException::noImpersonationActive();
-	 }
+        return $this->resolveUser($originalUserId);
+    }
 
-	 $target = Auth::user();
-	 $admin  = $this->resolveUser($originalUserId);
+    public function unpossess(): void
+    {
+        $originalUserId = Session::get(config('possession.session_keys.original_user'));
 
-	 if (!$admin->canPossess()) {
-		throw ImpersonationException::unauthorizedUnpossess();
-	 }
+        if (!$originalUserId) {
+            throw ImpersonationException::noImpersonationActive();
+        }
 
-	 $this->logoutAndDestroySession();
+        $target = Auth::user();
 
-	 Auth::login($admin);
-	 Session::forget(config('possession.session_keys.original_user'));
+        if (!$target) {
+            throw ImpersonationException::noImpersonationActive();
+        }
 
-	 event(new PossessionEnded($admin, $target));
-  }
+        $admin = $this->resolveUser($originalUserId);
 
-  protected function resolveUser ( $user ): Authenticatable
-  {
-	 if ($user instanceof Authenticatable) return $user;
+        /** @phpstan-ignore-next-line */
+        if (!$admin->canPossess()) {
+            throw ImpersonationException::unauthorizedUnpossess();
+        }
 
-	 $model = config('possession.user_model');
+        $this->logoutAndDestroySession();
 
-	 if (is_numeric($user)) {
-		return $model::findOrFail($user);
-	 }
+        Auth::login($admin);
+        Session::forget(config('possession.session_keys.original_user'));
 
-	 if (is_string($user) && filter_var($user, FILTER_VALIDATE_EMAIL)) {
-		return $model::where('email', $user)->firstOrFail();
-	 }
+        event(new PossessionEnded($admin, $target));
+    }
 
-	 return $model::findOrFail($user);
-  }
+    protected function resolveUser(Authenticatable|int|string $user): Authenticatable
+    {
+        if ($user instanceof Authenticatable) {
+            return $user;
+        }
 
-  protected function validateImpersonation ( $admin, $user ): void
-  {
-	 if (!$admin->canPossess()) {
-		throw ImpersonationException::unauthorizedPossess();
-	 }
+        /** @var class-string<Authenticatable> $model */
+        $model = config('possession.user_model');
 
-	 if (!$user->canBePossessed()) {
-		throw ImpersonationException::targetCannotBePossessed();
-	 }
+        if (is_numeric($user)) {
+            return $model::findOrFail($user);
+        }
 
-	 if ($admin->id === $user->id) {
-		throw ImpersonationException::selfPossession();
-	 }
-  }
+        if (filter_var($user, FILTER_VALIDATE_EMAIL)) {
+            return $model::where('email', $user)->firstOrFail();
+        }
 
-  protected function logoutAndDestroySession (): void
-  {
-	 Auth::logout();
-	 Session::invalidate();
-	 Session::regenerateToken();
-	 Session::flush();
-  }
+        return $model::findOrFail($user);
+    }
+
+    protected function validateImpersonation(Authenticatable $admin, Authenticatable $user): void
+    {
+        /** @phpstan-ignore-next-line */
+        if (!$admin->canPossess()) {
+            throw ImpersonationException::unauthorizedPossess();
+        }
+
+        /** @phpstan-ignore-next-line */
+        if (!$user->canBePossessed()) {
+            throw ImpersonationException::targetCannotBePossessed();
+        }
+
+        if ($admin->id === $user->id) {
+            throw ImpersonationException::selfPossession();
+        }
+    }
+
+    protected function logoutAndDestroySession(): void
+    {
+        Auth::logout();
+        Session::invalidate();
+        Session::regenerateToken();
+        Session::flush();
+    }
 }
