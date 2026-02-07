@@ -146,6 +146,7 @@ Available exceptions:
 - `TargetCannotBePossessedException`
 - `SelfPossessionException`
 - `NoImpersonationActiveException`
+- `AlreadyImpersonatingException`
 
 ## Configuration
 
