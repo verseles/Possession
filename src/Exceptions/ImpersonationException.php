@@ -30,4 +30,9 @@ class ImpersonationException extends Exception
   {
 	 return new self('No active impersonation session');
   }
+
+  public static function alreadyImpersonating (): self
+  {
+	 return new self('Cannot impersonate while already impersonating');
+  }
 }

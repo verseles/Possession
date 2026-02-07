@@ -8,9 +8,17 @@
       "Verseles\\Possession\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Verseles\\Possession\\Tests\\": "tests/"
+    }
+  },
   "require": {
     "php": "^8.2",
     "laravel/framework": "^9.0|^10.0|^11.0|^12.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^8.0|^9.0|^10.0"
   },
   "extra": {
     "laravel": {
