@@ -11,6 +11,10 @@ class PossessionManager
 {
   public function possess ( $user ): void
   {
+	 if (Session::has(config('possession.session_keys.original_user'))) {
+		throw ImpersonationException::alreadyImpersonating();
+	 }
+
 	 $admin = Auth::guard(config('possession.admin_guard'))->user();
 	 $user  = $this->resolveUser($user);
 
