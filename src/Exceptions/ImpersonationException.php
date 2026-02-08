@@ -35,4 +35,9 @@ class ImpersonationException extends Exception
   {
 	 return new self('Cannot impersonate while already impersonating');
   }
+
+  public static function adminNotFound (): self
+  {
+	 return new self('Original admin user not found');
+  }
 }

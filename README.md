@@ -147,6 +147,7 @@ Available exceptions:
 - `SelfPossessionException`
 - `NoImpersonationActiveException`
 - `AlreadyImpersonatingException`
+- `AdminNotFoundException` — original admin not found during unpossess (e.g., deleted)
 
 ## Configuration
 
