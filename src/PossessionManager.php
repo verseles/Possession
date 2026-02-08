@@ -34,7 +34,12 @@ class PossessionManager
 		throw ImpersonationException::noImpersonationActive();
 	 }
 
-	 $admin = $this->resolveUser($originalUserId);
+	 $guard = config('possession.admin_guard');
+	 $admin = Auth::guard($guard)->getProvider()->retrieveById($originalUserId);
+
+	 if (!$admin) {
+		throw new \Illuminate\Database\Eloquent\ModelNotFoundException("Admin user not found.");
+	 }
 
 	 if (!$admin->canPossess()) {
 		throw ImpersonationException::unauthorizedUnpossess();
@@ -42,7 +47,7 @@ class PossessionManager
 
 	 $this->logoutAndDestroySession();
 
-	 Auth::login($admin);
+	 Auth::guard($guard)->login($admin);
 	 Session::forget(config('possession.session_keys.original_user'));
   }
 
@@ -65,7 +70,9 @@ class PossessionManager
 		throw ImpersonationException::targetCannotBePossessed();
 	 }
 
-	 if ($admin->id === $user->id) {
+	 if (method_exists($admin, 'is') && $admin->is($user)) {
+		throw ImpersonationException::selfPossession();
+	 } elseif ($admin->getAuthIdentifier() == $user->getAuthIdentifier() && get_class($admin) === get_class($user)) {
 		throw ImpersonationException::selfPossession();
 	 }
   }
