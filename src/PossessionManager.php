@@ -9,20 +9,25 @@ use Verseles\Possession\Exceptions\ImpersonationException;
 
 class PossessionManager
 {
-  public function possess ( $user ): void
+  public function possess ( $user, $guard = null ): void
   {
 	 if (Session::has(config('possession.session_keys.original_user'))) {
 		throw ImpersonationException::alreadyImpersonating();
 	 }
 
 	 $admin = Auth::guard(config('possession.admin_guard'))->user();
-	 $user  = $this->resolveUser($user);
+	 $user  = $this->resolveUser($user, $guard);
 
 	 $this->validateImpersonation($admin, $user);
 
 	 $this->logoutAndDestroySession();
 
-	 Auth::login($user);
+	 if ($guard) {
+		Auth::guard($guard)->login($user);
+	 } else {
+		Auth::login($user);
+	 }
+
 	 Session::put(config('possession.session_keys.original_user'), $admin->id);
   }
 
@@ -51,9 +56,21 @@ class PossessionManager
 	 Session::forget(config('possession.session_keys.original_user'));
   }
 
-  protected function resolveUser ( $user ): Authenticatable
+  protected function resolveUser ( $user, $guard = null ): Authenticatable
   {
 	 if ($user instanceof Authenticatable) return $user;
+
+	 if ($guard) {
+		$provider = Auth::guard($guard)->getProvider();
+
+		if ($provider) {
+		  $model = $provider->retrieveById($user);
+
+		  if ($model) {
+			 return $model;
+		  }
+		}
+	 }
 
 	 $model = config('possession.user_model');
 
