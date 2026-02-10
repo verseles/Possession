@@ -29,6 +29,14 @@ class TargetUserStub extends Authenticatable
     protected $table = 'users';
 }
 
+class CustomerStub extends Authenticatable
+{
+    use ImpersonatesUsers;
+
+    protected $guarded = [];
+    protected $table = 'customers';
+}
+
 class MultiAuthPossessionTest extends TestCase
 {
     protected function getEnvironmentSetUp($app)
@@ -59,6 +67,17 @@ class MultiAuthPossessionTest extends TestCase
             'model'  => TargetUserStub::class,
         ]);
 
+        // Configure customer guard/provider
+        $app['config']->set('auth.guards.customer', [
+            'driver'   => 'session',
+            'provider' => 'customers',
+        ]);
+
+        $app['config']->set('auth.providers.customers', [
+            'driver' => 'eloquent',
+            'model'  => CustomerStub::class,
+        ]);
+
         $schema = $app['db']->connection()->getSchemaBuilder();
 
         $schema->create('admins', function ($table) {
@@ -70,6 +89,14 @@ class MultiAuthPossessionTest extends TestCase
         });
 
         $schema->create('users', function ($table) {
+            $table->increments('id');
+            $table->string('name');
+            $table->string('email');
+            $table->string('password');
+            $table->timestamps();
+        });
+
+        $schema->create('customers', function ($table) {
             $table->increments('id');
             $table->string('name');
             $table->string('email');
@@ -111,5 +138,25 @@ class MultiAuthPossessionTest extends TestCase
         Possession::possess($user);
 
         $this->assertEquals($user->id, Auth::id());
+    }
+
+    public function test_admin_can_possess_user_on_specific_guard()
+    {
+        $admin = AdminStub::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'password']);
+        $customer = CustomerStub::create(['name' => 'Customer', 'email' => 'customer@example.com', 'password' => 'password']);
+
+        Auth::guard('admin')->login($admin);
+
+        Possession::possess($customer, 'customer');
+
+        $this->assertTrue(Auth::guard('customer')->check());
+        $this->assertEquals($customer->id, Auth::guard('customer')->id());
+        $this->assertFalse(Auth::guard('web')->check());
+        $this->assertFalse(Auth::guard('admin')->check());
+
+        Possession::unpossess();
+
+        $this->assertTrue(Auth::guard('admin')->check());
+        $this->assertFalse(Auth::guard('customer')->check());
     }
 }
