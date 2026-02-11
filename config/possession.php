@@ -5,5 +5,6 @@ return [
     'admin_guard' => 'web',
     'session_keys' => [
         'original_user' => 'possession.original_user_id',
+        'impersonated_guard' => 'possession.impersonated_guard',
     ],
 ];
