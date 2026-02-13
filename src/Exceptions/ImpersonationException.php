@@ -40,4 +40,9 @@ class ImpersonationException extends Exception
   {
 	 return new self('Original admin user not found');
   }
+
+  public static function notAuthenticated (): self
+  {
+	 return new self('No authenticated user found');
+  }
 }
