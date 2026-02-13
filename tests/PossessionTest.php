@@ -62,4 +62,19 @@ class PossessionTest extends TestCase
             $this->assertEquals('Cannot impersonate while already impersonating', $e->getMessage());
         }
     }
+
+    public function test_it_throws_exception_when_not_authenticated()
+    {
+        $user = UserStub::create(['name' => 'User', 'email' => 'user@example.com', 'password' => 'password']);
+
+        // Ensure no user is logged in
+        Auth::logout();
+
+        try {
+            Possession::possess($user);
+            $this->fail('Should have thrown ImpersonationException');
+        } catch (ImpersonationException $e) {
+            $this->assertEquals('No authenticated user found', $e->getMessage());
+        }
+    }
 }
