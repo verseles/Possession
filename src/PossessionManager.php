@@ -16,6 +16,11 @@ class PossessionManager
 	 }
 
 	 $admin = Auth::guard(config('possession.admin_guard'))->user();
+
+	 if (!$admin) {
+		throw ImpersonationException::unauthorizedPossess();
+	 }
+
 	 $user  = $this->resolveUser($user);
 
 	 $this->validateImpersonation($admin, $user);
