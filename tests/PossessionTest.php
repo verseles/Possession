@@ -62,4 +62,14 @@ class PossessionTest extends TestCase
             $this->assertEquals('Cannot impersonate while already impersonating', $e->getMessage());
         }
     }
+
+    public function test_it_throws_exception_if_no_authenticated_user()
+    {
+        $user1 = UserStub::create(['name' => 'User 1', 'email' => 'user1@example.com', 'password' => 'password']);
+
+        $this->expectException(ImpersonationException::class);
+        $this->expectExceptionMessage('Current user is not authorized to impersonate others');
+
+        Possession::possess($user1);
+    }
 }
