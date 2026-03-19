@@ -9,7 +9,7 @@ use Verseles\Possession\Exceptions\ImpersonationException;
 
 class PossessionManager
 {
-  public function possess ( $user ): void
+  public function possess ( $user, ?string $guard = null ): void
   {
 	 if (Session::has(config('possession.session_keys.original_user'))) {
 		throw ImpersonationException::alreadyImpersonating();
@@ -25,15 +25,18 @@ class PossessionManager
 
 	 $this->validateImpersonation($admin, $user);
 
-	 $this->logoutAndDestroySession();
+	 $this->logoutAndDestroySession(config('possession.admin_guard'));
 
-	 Auth::login($user);
+	 $guard = $guard ?? config('auth.defaults.guard');
+	 Auth::guard($guard)->login($user);
 	 Session::put(config('possession.session_keys.original_user'), $admin->id);
+	 Session::put(config('possession.session_keys.impersonation_guard'), $guard);
   }
 
   public function unpossess (): void
   {
 	 $originalUserId = Session::get(config('possession.session_keys.original_user'));
+	 $impersonationGuard = Session::get(config('possession.session_keys.impersonation_guard'));
 
 	 if (!$originalUserId) {
 		throw ImpersonationException::noImpersonationActive();
@@ -50,10 +53,11 @@ class PossessionManager
 		throw ImpersonationException::unauthorizedUnpossess();
 	 }
 
-	 $this->logoutAndDestroySession();
+	 $this->logoutAndDestroySession($impersonationGuard);
 
 	 Auth::guard($guard)->login($admin);
 	 Session::forget(config('possession.session_keys.original_user'));
+	 Session::forget(config('possession.session_keys.impersonation_guard'));
   }
 
   protected function resolveUser ( $user ): Authenticatable
@@ -80,9 +84,14 @@ class PossessionManager
 	 }
   }
 
-  protected function logoutAndDestroySession (): void
+  protected function logoutAndDestroySession ( $guard = null ): void
   {
-	 Auth::logout();
+	 if ($guard) {
+		Auth::guard($guard)->logout();
+	 } else {
+		Auth::logout();
+	 }
+
 	 Session::invalidate();
 	 Session::regenerateToken();
 	 Session::flush();
