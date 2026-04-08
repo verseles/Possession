@@ -66,6 +66,10 @@ class PossessionManager
 
 	 $model = config('possession.user_model');
 
+	 if (is_string($user) && filter_var($user, FILTER_VALIDATE_EMAIL)) {
+		return $model::where('email', $user)->firstOrFail();
+	 }
+
 	 return $model::findOrFail($user);
   }
 

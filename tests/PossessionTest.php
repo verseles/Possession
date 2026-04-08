@@ -77,4 +77,17 @@ class PossessionTest extends TestCase
             $this->assertEquals('No authenticated user found', $e->getMessage());
         }
     }
+
+    public function test_it_resolves_user_by_email()
+    {
+        $admin = UserStub::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'password']);
+        $user = UserStub::create(['name' => 'User', 'email' => 'user@example.com', 'password' => 'password']);
+
+        Auth::login($admin);
+
+        Possession::possess('user@example.com');
+
+        $this->assertEquals($user->id, Auth::id());
+        $this->assertEquals($admin->id, Session::get('possession_original_user'));
+    }
 }
