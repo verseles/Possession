@@ -1,4 +1,4 @@
-@if(Auth::check() && Auth::user()->isImpersonating())
+@if(Auth::check() && Auth::user()->isPossessed())
     <div style="position: fixed; bottom: 20px; right: 20px; padding: 15px; background: #ff4444; color: white; border-radius: 5px;">
         Impersonating {{ Auth::user()->name }}
         <form action="{{ route('possession.leave') }}" method="POST" style="display: inline-block; margin-left: 10px;">
