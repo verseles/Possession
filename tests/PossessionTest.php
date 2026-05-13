@@ -60,6 +60,7 @@ class PossessionTest extends TestCase
             $this->fail('Should have thrown ImpersonationException');
         } catch (ImpersonationException $e) {
             $this->assertEquals('Cannot impersonate while already impersonating', $e->getMessage());
+            $this->assertEquals(400, $e->getCode());
         }
     }
 
@@ -75,6 +76,7 @@ class PossessionTest extends TestCase
             $this->fail('Should have thrown ImpersonationException');
         } catch (ImpersonationException $e) {
             $this->assertEquals('No authenticated user found', $e->getMessage());
+            $this->assertEquals(401, $e->getCode());
         }
     }
 
